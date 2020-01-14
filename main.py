@@ -16,10 +16,8 @@ def set_unset_obstacles_handler(event):
         return
     if event.button == gm.BUTTON_LEFTCLICK:
         set_obstacle(event.xdata, event.ydata)
-        gm.draw()
     elif event.button == gm.BUTTON_RIGHTCLICK:
         unset_obstacle(event.xdata, event.ydata)
-        gm.draw()
 
 def switch_mode(new_mode):
     if new_mode == MODE_RUNNING:
@@ -29,7 +27,6 @@ def switch_mode(new_mode):
     global mode
     mode = new_mode
     gm.set_title(title)
-    gm.draw()
 
 def switch_mode_handler(event):
     global mode
@@ -45,7 +42,6 @@ def clear_all_cells():
     for y in range(gm.height):
         for x in range(gm.width):
             unset_obstacle(x, y)
-    gm.draw()
 
 def clear_all_cells_handler(event):
     global mode
@@ -58,6 +54,16 @@ mode = None
 MODE_DRAWING = 0
 MODE_RUNNING = 1
 
+import time
+from threading import Thread
+
+def interval_drawer():
+    while True:
+        print("DRAWING")
+        time.sleep(0.02)
+        gm.draw()
+th = Thread(target=interval_drawer, daemon=True)
+
 if __name__ == "__main__":
     gm.init(40, 30)
     switch_mode(MODE_DRAWING)
@@ -66,6 +72,7 @@ if __name__ == "__main__":
     gm.connect('key_press_event', switch_mode_handler)
     gm.connect('key_press_event', clear_all_cells_handler)
     try:
+        th.start()
         gm.plt.show()
     finally:
         gm.quit()
