@@ -1,4 +1,11 @@
+from threading import Thread
+
 import grid_map as gm
+
+mode = None
+
+MODE_DRAWING = 0
+MODE_RUNNING = 1
 
 def set_obstacle(x, y):
     if x is None or y is None:
@@ -49,20 +56,13 @@ def clear_all_cells_handler(event):
         if mode == MODE_DRAWING:
             clear_all_cells()
 
-mode = None
-
-MODE_DRAWING = 0
-MODE_RUNNING = 1
-
-import time
-from threading import Thread
-
-def interval_drawer():
+def _interval_drawer():
+    import time
     while True:
         print("DRAWING")
         time.sleep(0.02)
         gm.draw()
-th = Thread(target=interval_drawer, daemon=True)
+interval_drawer = Thread(target=_interval_drawer, daemon=True)
 
 if __name__ == "__main__":
     gm.init(40, 30)
