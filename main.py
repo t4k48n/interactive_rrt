@@ -72,7 +72,7 @@ if __name__ == "__main__":
     gm.connect('key_press_event', switch_mode_handler)
     gm.connect('key_press_event', clear_all_cells_handler)
     try:
-        th.start()
+        interval_drawer.start()
         gm.plt.show()
     finally:
         gm.quit()
