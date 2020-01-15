@@ -23,3 +23,10 @@ RRTなのでノードとエッジで経路は構成される。
 ## 描画方法
 
 Matplotlibのpcolormapで描く。
+
+## ショートカットキー
+
+e: 全edgeを消す
+c: 全cellを消す
+o: 全obstacleを消す
+n: 全nodeを消す

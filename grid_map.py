@@ -10,23 +10,23 @@ BUTTON_RIGHTCLICK = MouseButton.RIGHT
 CELL_EMPTY = 0
 CELL_START = 1
 CELL_GOAL = 2
-CELL_EDGE = 3
+CELL_SHORTESTNODE = 3
 CELL_NODE = 4
 CELL_OBSTACLE = 5
 
 # 状態に対応する色。
 COLOR_EMPTY = "white"
-COLOR_START = "red"     # nodeと重複。
-COLOR_GOAL = "red"      # nodeと重複。
-COLOR_EDGE = "blue"
-COLOR_NODE = "red"
+COLOR_START = "tab:cyan"     # nodeと重複。
+COLOR_GOAL = "tab:orange"      # nodeと重複。
+COLOR_SHORTESTNODE = "tab:green"
+COLOR_NODE = "tab:blue"
 COLOR_OBSTACLE = "black"
 
 # セルの状態と色の対応
-GRID_CMAP = colors.ListedColormap([COLOR_EMPTY, COLOR_START, COLOR_GOAL, COLOR_EDGE, COLOR_NODE, COLOR_OBSTACLE])
+GRID_CMAP = colors.ListedColormap([COLOR_EMPTY, COLOR_START, COLOR_GOAL, COLOR_SHORTESTNODE, COLOR_NODE, COLOR_OBSTACLE])
 # セルの色境界。6色の境界は6 + 1 = 7個ある。
 # セル状態が1間隔のiotaであることを仮定。
-GRID_BOUNDS = [CELL_EMPTY, CELL_START, CELL_GOAL, CELL_EDGE, CELL_NODE, CELL_OBSTACLE, CELL_OBSTACLE+1]
+GRID_BOUNDS = [CELL_EMPTY, CELL_START, CELL_GOAL, CELL_SHORTESTNODE, CELL_NODE, CELL_OBSTACLE, CELL_OBSTACLE+1]
 # GRID_CMAP, GRID_BOUNDSを使った色標本。
 GRID_NORM = colors.BoundaryNorm(GRID_BOUNDS, GRID_CMAP.N)
 
@@ -44,6 +44,12 @@ def init(width_, height_):
     global initialized
     if initialized:
         raise RuntimeError("map already initialized")
+
+    for k in plt.rcParams:
+        if k.split(".")[0] == "keymap":
+            plt.rcParams[k] = []
+    plt.rcParams["keymap.fullscreen"].append("f")
+    plt.rcParams["keymap.quit"].append("q")
 
     global width, height
     width = width_
@@ -63,13 +69,40 @@ def init(width_, height_):
     global im
     im = ax.imshow(data, cmap=GRID_CMAP, norm=GRID_NORM)
 
+    fig.subplots_adjust()
+
     initialized = True
 
-def set_cell(x, y, value):
+def get_index(x, y):
     validate_initialized()
 
     x_index = int(round(x))
     y_index = int(round(y))
+
+    return (x_index, y_index)
+
+def get_linspace_indices(start_xy, end_xy, num):
+    xs, ys = start_xy
+    xe, ye = end_xy
+    x_series = np.linspace(xs, xe, num)
+    y_series = np.linspace(ys, ye, num)
+    indices_with_duplication = [get_index(*xy) for xy in zip(x_series, y_series)]
+    indices = list(dict.fromkeys(indices_with_duplication))
+    return indices
+
+def get_cell(x, y):
+    validate_initialized()
+
+    x_index, y_index = get_index(x, y)
+
+    global data
+    return data[y_index, x_index]
+
+
+def set_cell(x, y, value):
+    validate_initialized()
+
+    x_index, y_index = get_index(x, y)
 
     global data
     data[y_index, x_index] = value
@@ -100,11 +133,11 @@ def connect(event_name, handler):
     global fig
     fig.canvas.mpl_connect(event_name, handler)
 
+# 生成したフィギュアを閉じて、initializedフラグをオフ。二重呼び出し可能。
 def quit():
-    validate_initialized()
-
     global fig
-    plt.close(fig)
+    if fig is not None:
+        plt.close(fig)
 
     global initialized
     initialized = False
