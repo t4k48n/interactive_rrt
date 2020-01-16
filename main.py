@@ -125,7 +125,7 @@ def switch_mode_handler(event):
 def distance_of_nodes(n1, n2):
     return math.sqrt((n1[0] - n2[0]) ** 2 + (n1[1] - n2[1]) ** 2)
 
-INTERVAL_ALGORITHM = 0.1
+INTERVAL_ALGORITHM = 0.15
 GOAL_RATIO_ALGORITHM = 0.25
 STEP_LENGTH_ALGORITHM = 3
 TIMEOUT_ALGORITHM = 1000
