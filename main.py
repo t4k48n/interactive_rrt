@@ -101,7 +101,8 @@ def switch_mode(new_mode, title=None):
         gm.set_title(title)
 
     if mode == MODE_RUNNING:
-        thread_algorithm = Thread(target=algorithm, daemon=True)
+        global thread_algorithm
+        thread_algorithm = Thread(target=algorithm)
         thread_algorithm.start()
     if mode == MODE_DRAWING:
         gm.set_cell(*NODE_START, gm.CELL_START)
@@ -128,6 +129,7 @@ COLOR_EDGE_ALGORITHM = 'tab:red'
 WIDTH_EDGE_ALGORITHM = 10
 COLOR_SHORTESTEDGE_ALGORITHM = 'tab:green'
 WIDTH_SHORTESTEDGE_ALGORITHM = 15
+thread_algorithm = None
 def try_to_connect(new_node, base_node, nodes, edges, obstacles):
     if new_node in nodes or new_node in obstacles:
         return False, nodes, edges
@@ -136,8 +138,11 @@ def try_to_connect(new_node, base_node, nodes, edges, obstacles):
         for edge in get_edges_around(*obstacle):
             if intersected(edge, new_edge):
                 return False, nodes, edges
-    gm.set_cell(*new_node, gm.CELL_NODE)
-    gm.ax.plot([new_node[0], base_node[0]], [new_node[1], base_node[1]], linewidth=WIDTH_EDGE_ALGORITHM, color=COLOR_EDGE_ALGORITHM)
+    try:
+        gm.set_cell(*new_node, gm.CELL_NODE)
+        gm.ax.plot([new_node[0], base_node[0]], [new_node[1], base_node[1]], linewidth=WIDTH_EDGE_ALGORITHM, color=COLOR_EDGE_ALGORITHM)
+    except RuntimeError:
+        return False, nodes, edges
     nodes.append(new_node)
     edges.append(new_edge)
     return True, nodes, edges
@@ -167,14 +172,19 @@ def algorithm():
     clear_all_nodes()
     clear_all_edges()
 
-    gm.set_cell(*NODE_START, gm.CELL_START)
-    gm.set_cell(*NODE_GOAL, gm.CELL_GOAL)
+    try:
+        gm.set_cell(*NODE_START, gm.CELL_START)
+        gm.set_cell(*NODE_GOAL, gm.CELL_GOAL)
+    except RuntimeError:
+        return
     time.sleep(INTERVAL_ALGORITHM)
 
     nodes = [NODE_START]
     edges = []
-    obstacles = [(x, y) for x in range(gm.width) for y in range(gm.height) if gm.get_cell(x, y) == gm.CELL_OBSTACLE]
-
+    try:
+        obstacles = [(x, y) for x in range(gm.width) for y in range(gm.height) if gm.get_cell(x, y) == gm.CELL_OBSTACLE]
+    except RuntimeError:
+        return
 
     global mode
     retry_count = 0
@@ -182,7 +192,10 @@ def algorithm():
         if random.random() <= GOAL_RATIO_ALGORITHM:
             target_to_extend = NODE_GOAL
         else:
-            target_to_extend = (random.randint(0, gm.width - 1), random.randint(0, gm.height - 1))
+            try:
+                target_to_extend = (random.randint(0, gm.width - 1), random.randint(0, gm.height - 1))
+            except RuntimeError:
+                return
 
         if target_to_extend in nodes:
             retry_count += 1
@@ -199,7 +212,10 @@ def algorithm():
             scale = STEP_LENGTH_ALGORITHM / distance
         x_candidate = node_nearest[0] + scale * (target_to_extend[0] - node_nearest[0])
         y_candidate = node_nearest[1] + scale * (target_to_extend[1] - node_nearest[1])
-        node_candidate = gm.get_index(x_candidate, y_candidate)
+        try:
+            node_candidate = gm.get_index(x_candidate, y_candidate)
+        except RuntimeError:
+            return
 
         ok, nodes, edges = try_to_connect(node_candidate, node_nearest, nodes, edges, obstacles)
         if not ok:
@@ -208,12 +224,18 @@ def algorithm():
         if node_candidate == NODE_GOAL:
             nodes_of_path = find_nodes_of_path_with_dijkstra(nodes, edges)
             for node in nodes_of_path:
-                gm.set_cell(*node, gm.CELL_SHORTESTNODE)
-            gm.set_cell(*NODE_START, gm.CELL_START)
-            gm.set_cell(*NODE_GOAL, gm.CELL_GOAL)
-            x_series = [node[0] for node in nodes_of_path]
-            y_series = [node[1] for node in nodes_of_path]
-            gm.ax.plot(x_series, y_series, linewidth=WIDTH_SHORTESTEDGE_ALGORITHM, color=COLOR_SHORTESTEDGE_ALGORITHM)
+                try:
+                    gm.set_cell(*node, gm.CELL_SHORTESTNODE)
+                except RuntimeError:
+                    return
+            try:
+                gm.set_cell(*NODE_START, gm.CELL_START)
+                gm.set_cell(*NODE_GOAL, gm.CELL_GOAL)
+                x_series = [node[0] for node in nodes_of_path]
+                y_series = [node[1] for node in nodes_of_path]
+                gm.ax.plot(x_series, y_series, linewidth=WIDTH_SHORTESTEDGE_ALGORITHM, color=COLOR_SHORTESTEDGE_ALGORITHM)
+            except RuntimeError:
+                return
             switch_mode(MODE_DRAWING, 'SUCCESS ({} steps)'.format(len(nodes_of_path) - 1))
             return
         retry_count = 0
@@ -264,7 +286,10 @@ INTERVAL_DRAWER = 0.02
 def _drawer():
     while True:
         time.sleep(INTERVAL_DRAWER)
-        gm.draw()
+        try:
+            gm.draw()
+        except RuntimeError:
+            return
 
 if __name__ == '__main__':
     try:
@@ -277,8 +302,11 @@ if __name__ == '__main__':
         gm.connect('key_press_event', clear_all_cells_handler)
         gm.connect('key_press_event', clear_all_nodes_handler)
         gm.connect('key_press_event', clear_all_edges_handler)
-        thread_drawer = Thread(target=_drawer, daemon=True)
+        thread_drawer = Thread(target=_drawer)
         thread_drawer.start()
         gm.plt.show()
     finally:
         gm.quit()
+        thread_drawer.join()
+        if thread_algorithm is not None:
+            thread_algorithm.join()
