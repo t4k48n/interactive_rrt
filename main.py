@@ -3,10 +3,14 @@ import math
 import time
 from threading import Thread
 
+import pyaudio
+
 import numpy as np
 import scipy.sparse.csgraph as sgraph
 
 import grid_map as gm
+
+from bell import Bell
 
 mode = None
 
@@ -143,6 +147,7 @@ def try_to_connect(new_node, base_node, nodes, edges, obstacles):
         gm.ax.plot([new_node[0], base_node[0]], [new_node[1], base_node[1]], linewidth=WIDTH_EDGE_ALGORITHM, color=COLOR_EDGE_ALGORITHM)
     except RuntimeError:
         return False, nodes, edges
+    plot_node_bell.play()
     nodes.append(new_node)
     edges.append(new_edge)
     return True, nodes, edges
@@ -236,6 +241,7 @@ def algorithm():
                 gm.ax.plot(x_series, y_series, linewidth=WIDTH_SHORTESTEDGE_ALGORITHM, color=COLOR_SHORTESTEDGE_ALGORITHM)
             except RuntimeError:
                 return
+            search_succeeded_bell.play()
             switch_mode(MODE_DRAWING, 'SUCCESS ({} steps)'.format(len(nodes_of_path) - 1))
             return
         retry_count = 0
@@ -293,6 +299,9 @@ def _drawer():
 
 if __name__ == '__main__':
     try:
+        pa = pyaudio.PyAudio()
+        plot_node_bell = Bell(pa, './type01.wav')
+        search_succeeded_bell = Bell(pa, './type10.wav')
         gm.init(30, 15)
         NODE_GOAL = (gm.width - 1, gm.height - 1)
         switch_mode(MODE_DRAWING)
@@ -310,3 +319,6 @@ if __name__ == '__main__':
         thread_drawer.join()
         if thread_algorithm is not None:
             thread_algorithm.join()
+        search_succeeded_bell.close()
+        plot_node_bell.close()
+        pa.terminate()
